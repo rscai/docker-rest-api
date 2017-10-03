@@ -1,0 +1,26 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/docker-rest-api
+    docker:
+      - image: circleci/openjdk:8-jdk-browsers
+    steps:
+      - run: docker pull sath89/oracle-12c 
+      - run:
+          command: |
+            sudo apt-get install jq
+            wget -O ~/codacy-coverage-reporter-assembly-latest.jar $(curl https://api.github.com/repos/codacy/codacy-coverage-reporter/releases/latest | jq -r .assets[0].browser_download_url)
+      - checkout
+      - restore_cache:
+          key: java102-repl-{{ checksum "pom.xml" }}
+      - run: ./mvnw clean test package
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: java102-repl-{{ checksum "pom.xml" }}
+      - store_test_results:
+          path: target/surefire-reports
+      - run: 
+          command: |
+            java -cp ~/codacy-coverage-reporter-assembly-latest.jar com.codacy.CodacyCoverageReporter -l Java -r target/site/jacoco/jacoco.xml
+      
